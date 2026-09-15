@@ -1,0 +1,128 @@
+// العناصر
+const genPassInput = document.getElementById('generated-password');
+const copyBtn = document.getElementById('copy-btn');
+const generateBtn = document.getElementById('generate-btn');
+const lengthEl = document.getElementById('length');
+const uppercaseEl = document.getElementById('uppercase');
+const lowercaseEl = document.getElementById('lowercase');
+const numbersEl = document.getElementById('numbers');
+const symbolsEl = document.getElementById('symbols');
+const strengthBar = document.getElementById('strength-bar');
+
+const saveForm = document.getElementById('save-form');
+const siteNameEl = document.getElementById('site-name');
+const usernameEl = document.getElementById('username');
+const passwordInputEl = document.getElementById('password-input');
+const passwordListEl = document.getElementById('password-list');
+
+// مجموعات الأحرف
+const chars = {
+  uppercase: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+  lowercase: 'abcdefghijklmnopqrstuvwxyz',
+  numbers: '0123456789',
+  symbols: '!@#$%^&*()_+-=[]{}|;:,.<>?'
+};
+
+// توليد كلمة مرور آمنة باستخدام Crypto API
+function generatePassword() {
+  const length = parseInt(lengthEl.value);
+  let validChars = '';
+
+  if (uppercaseEl.checked) validChars += chars.uppercase;
+  if (lowercaseEl.checked) validChars += chars.lowercase;
+  if (numbersEl.checked) validChars += chars.numbers;
+  if (symbolsEl.checked) validChars += chars.symbols;
+
+  if (!validChars) {
+    alert('يرجى تحديد خيار واحد على الأقل من الأحرف!');
+    return;
+  }
+
+  let password = '';
+  const array = new Uint32Array(length);
+  window.crypto.getRandomValues(array);
+
+  for (let i = 0; i < length; i++) {
+    password += validChars[array[i] % validChars.length];
+  }
+
+  genPassInput.value = password;
+  passwordInputEl.value = password; // التعبئة التلقائية حقل الحفظ
+  updateStrengthMeter(password);
+}
+
+// تقييم قوة كلمة المرور
+function updateStrengthMeter(password) {
+  let score = 0;
+  if (password.length >= 12) score += 40;
+  else if (password.length >= 8) score += 20;
+
+  if (/[A-Z]/.test(password)) score += 15;
+  if (/[a-z]/.test(password)) score += 15;
+  if (/[0-9]/.test(password)) score += 15;
+  if (/[^A-Za-z0-9]/.test(password)) score += 15;
+
+  strengthBar.style.width = score + '%';
+
+  if (score < 40) {
+    strengthBar.style.backgroundColor = '#e74c3c'; // ضعيف
+  } else if (score < 75) {
+    strengthBar.style.backgroundColor = '#f39c12'; // متوسط
+  } else {
+    strengthBar.style.backgroundColor = '#2ecc71'; // قوي جداً
+  }
+}
+
+// نسخ كلمة المرور
+copyBtn.addEventListener('click', () => {
+  if (!genPassInput.value) return;
+  navigator.clipboard.writeText(genPassInput.value);
+  alert('تم نسخ كلمة المرور إلى الحافظة!');
+});
+
+// إدارة الحسابات المحفوظة (LocalStorage)
+function getSavedAccounts() {
+  return JSON.parse(localStorage.getItem('passwords')) || [];
+}
+
+function displayAccounts() {
+  passwordListEl.innerHTML = '';
+  const accounts = getSavedAccounts();
+
+  accounts.forEach((acc, index) => {
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <div>
+        <strong>${acc.site}</strong> - ${acc.user}
+        <br><small>كلمة المرور: ${acc.pass}</small>
+      </div>
+      <button class="delete-btn" onclick="deleteAccount(${index})">حذف</button>
+    `;
+    passwordListEl.appendChild(li);
+  });
+}
+
+saveForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const accounts = getSavedAccounts();
+  accounts.push({
+    site: siteNameEl.value,
+    user: usernameEl.value,
+    pass: passwordInputEl.value
+  });
+  localStorage.setItem('passwords', JSON.stringify(accounts));
+  saveForm.reset();
+  displayAccounts();
+});
+
+function deleteAccount(index) {
+  const accounts = getSavedAccounts();
+  accounts.splice(index, 1);
+  localStorage.setItem('passwords', JSON.stringify(accounts));
+  displayAccounts();
+}
+
+// الأحداث والتنفيذ الأولي
+generateBtn.addEventListener('click', generatePassword);
+displayAccounts();
+generatePassword();
